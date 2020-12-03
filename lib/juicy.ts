@@ -15,7 +15,7 @@ import Point from './juicy.point';
 
 /* Passthrough exports */
 export * from './juicy.sound';
-export * from './juicy.point';
+export * as Point from './juicy.point';
 
 interface KeyNameToCodeMap {
     [key: string]: number
@@ -336,6 +336,7 @@ export class Entity {
     state: State;
 
     props: { [key: string]: any };
+    visible: boolean = true;
     position: Point;
     scale: Point;
     width: number = 0;
@@ -356,6 +357,7 @@ export class Entity {
         components.forEach(c => this.addComponent(c));
 
         this.state = state;
+        state.add(this);
 
         this.init();
     }
@@ -590,6 +592,10 @@ export class ImageComponent extends Component {
 
 export class BoxComponent extends Component {
     fillStyle: string | CanvasGradient | CanvasPattern = 'white';
+
+    setFillStyle(style: string | CanvasGradient | CanvasPattern) {
+        this.fillStyle = style;
+    }
 
     render(context: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
         context.fillStyle = this.fillStyle;

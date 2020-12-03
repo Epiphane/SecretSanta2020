@@ -1,7 +1,9 @@
 const http = require('http');
 const fs = require('fs');
+const WebSocket = require('ws');
 
 const basedir = __dirname;
+var start = Date.now();
 
 function serveStatResult(res, path, err) {
     if (err) {
@@ -35,7 +37,17 @@ function serveStatResult(res, path, err) {
     }
 }
 
+const wss = new WebSocket.Server({
+    port: 8081
+});
+
 http.createServer(function (req, res) {
+    if (req.url === '/time') {
+        res.write(JSON.stringify({ start }));
+        res.end();
+        return;
+    }
+
     const path = basedir + req.url;
     fs.stat(path, (err, stat) => {
         if (!err && stat.isDirectory()) {
