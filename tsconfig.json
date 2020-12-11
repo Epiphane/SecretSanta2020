@@ -5,16 +5,12 @@
     "sourceMap": true,
     "strict": true,
     "target": "es2017",
-    "baseUrl": "src",
-    "paths": {
-      "lib/*": [
-        "./lib"
-      ]
-    }
+    "baseUrl": "lib",
+    "moduleResolution": "node"
   },
   "compileOnSave": true,
   "include": [
-    "src",
-    "lib"
+    "src/**/*",
+    "lib/**/*"
   ],
 }

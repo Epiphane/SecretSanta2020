@@ -10,11 +10,14 @@ window.requestAnimationFrame = (function () {
         };
 })();
 
+import * as TREE from './three.js';
+export * as THREE from './three.js';
+
 /* Exports in use */
 import Point from './juicy.point';
 
 /* Passthrough exports */
-export * from './juicy.sound';
+export * as Sound from './juicy.sound';
 export * as Point from './juicy.point';
 
 interface KeyNameToCodeMap {
@@ -27,11 +30,11 @@ class Game {
     #lastTime: number = 0;
 
     #canvas: HTMLCanvasElement | undefined;
-    #context: CanvasRenderingContext2D | undefined;
+    #renderer: TREE.Renderer | undefined;
 
     width: number = 0;
     height: number = 0;
-    #scale: Point = new Point(1);
+    #scale = new TREE.Vector2(1);
 
     #KEYS: KeyNameToCodeMap = {};
     #CODES: { [key: number]: string } = {};
@@ -39,11 +42,15 @@ class Game {
     #keyState: { [key: number]: boolean } = {};
     #listener: { [key: string]: EventListener } = {};
 
-    init(canvas: HTMLCanvasElement, width: number, height: number, keys: KeyNameToCodeMap) {
+    #debug?: HTMLElement;
+    #fps: number = 0;
+    #fpsAlpha: number = 0.95;
+
+    init(renderer: TREE.Renderer, width: number, height: number, keys: KeyNameToCodeMap) {
         this.width = width;
         this.height = height;
 
-        this.setCanvas(canvas);
+        this.setRenderer(renderer);
 
         // Input stuff
         this.#KEYS = keys || {};
@@ -76,20 +83,20 @@ class Game {
         this.#listener = {};
     }
 
-    setCanvas(canvas: HTMLCanvasElement) {
-        this.#canvas = canvas;
-        let context = canvas.getContext('2d');
-        if (!context) {
-            throw Error('Could not get 2D rendering context for Canvas');
-        }
-        this.#context = context;
+    setDebug(debug?: HTMLElement) {
+        this.#debug = debug;
+    }
+
+    setRenderer(renderer: TREE.Renderer) {
+        this.#renderer = renderer;
+        this.#canvas = renderer.domElement;
 
         let startDrag: MouseEvent | undefined;
-        canvas.onmousedown = (evt) => {
+        this.#canvas.onmousedown = (evt) => {
             startDrag = evt;
             this.trigger('dragstart', evt);
         };
-        canvas.onmouseup = (evt) => {
+        this.#canvas.onmouseup = (evt) => {
             if (!startDrag) {
                 return;
             }
@@ -106,7 +113,7 @@ class Game {
 
             startDrag = undefined;
         };
-        canvas.onmousemove = (evt) => {
+        this.#canvas.onmousemove = (evt) => {
             if (startDrag) {
                 this.trigger('drag', evt);
             }
@@ -131,7 +138,7 @@ class Game {
             this.#canvas.height = height;
             this.#canvas.width = height * this.width / this.height;
         }
-        this.#scale = new Point(this.#canvas.width / this.width, this.#canvas.height / this.height);
+        this.#scale = new TREE.Vector2(this.#canvas.width / this.width, this.#canvas.height / this.height);
 
         // Make sure we re-render
         if (this.#state) {
@@ -196,7 +203,7 @@ class Game {
         let mx = evt.clientX - canvasRect.left;
         let my = evt.clientY - canvasRect.top;
 
-        return new Point(Math.floor(mx * this.width / this.#canvas.width), Math.floor(my * this.height / this.#canvas.height));
+        return new TREE.Vector2(mx / this.#canvas.width * 2 - 1, 1 - my / this.#canvas.height * 2);
     }
 
     setState(state: State) {
@@ -217,6 +224,14 @@ class Game {
 
         requestAnimationFrame(() => this.update());
         let nextTime = new Date().getTime();
+
+        if (this.#debug && nextTime !== this.#lastTime) {
+            var fps = 1000 / (nextTime - this.#lastTime);
+            this.#fps = this.#fpsAlpha * this.#fps + (1 - this.#fpsAlpha) * fps;
+
+            this.#debug.innerHTML = 'FPS: ' + Math.floor(this.#fps);
+        }
+
         let dt = (nextTime - this.#lastTime) / 1000;
         if (dt > 0.2) {
             this.#lastTime = nextTime;
@@ -241,20 +256,7 @@ class Game {
     }
 
     render() {
-        if (!this.#context) {
-            throw Error('Game was not properly initialized - context is unavailable');
-        }
-
-        this.#context.save();
-
-        this.#context.scale(this.#scale.x, this.#scale.y);
-        if (!this.#state.stopClear) {
-            this.#context.clearRect(0, 0, this.width, this.height);
-        }
-
-        this.#state.render(this.#context);
-
-        this.#context.restore();
+        this.#state.render(this.#renderer!);
 
         return this; // Enable chaining
     }
@@ -295,8 +297,12 @@ export class State {
     game: Game = game;
     entities: Entity[] = [];
 
-    init() {
+    protected scene = new TREE.Scene();
+    protected camera: TREE.Camera = new TREE.PerspectiveCamera(45, 1, 0.1, 1000);
 
+    init() {
+        this.perspective();
+        this.lookAt(new TREE.Vector3(0, 0, -10), new TREE.Vector3(0, 0, 0));
     }
 
     update(dt: number) {
@@ -307,14 +313,44 @@ export class State {
         return false;
     }
 
-    render(context: CanvasRenderingContext2D) {
-        this.entities.forEach(e => {
-            e.render(context);
-        });
+    render(renderer: TREE.Renderer) {
+        if (this.camera) {
+            renderer.render(this.scene, this.camera!);
+        }
+    }
+
+    perspective(fov?: number, near?: number, far?: number) {
+        fov = fov || 45;
+        near = near || 0.1;
+        far = far || 1000;
+        this.camera = new TREE.PerspectiveCamera(fov, this.game.width / this.game.height, near, far);
+    }
+
+    orthographic(scale?: number, near?: number, far?: number) {
+        scale = scale || 1;
+        near = near || -500;
+        far = far || 1000;
+        this.camera = new TREE.OrthographicCamera(
+            -this.game.width / scale,
+            this.game.width / scale,
+            this.game.height / scale,
+            -this.game.height / scale,
+            near,
+            far
+        );
+
+    }
+
+    lookAt(position: TREE.Vector3, lookAt: TREE.Vector3) {
+        this.camera!.position.copy(position);
+        this.camera!.lookAt(lookAt);;
     }
 
     add(e: Entity) {
         this.entities.push(e);
+    }
+
+    click(pos: THREE.Vector2) {
     }
 };
 
@@ -332,25 +368,21 @@ export class State {
  */
 export type RenderArgs = [CanvasRenderingContext2D, number, number, number, number];
 
-export class Entity {
+export class Entity extends TREE.Object3D {
     state: State;
 
     props: { [key: string]: any };
     visible: boolean = true;
-    position: Point;
-    scale: Point;
     width: number = 0;
     height: number = 0;
-    children: Entity[];
-    parent: Entity | undefined;
 
     components: Component[] = [];
     updated: boolean[] = [];
 
     constructor(state: State, components?: (new () => Component)[]) {
+        super();
+
         this.props = {};
-        this.position = new Point();
-        this.scale = new Point(1);
         this.children = [];
 
         components = (components || []).concat(this.initialComponents());
@@ -415,72 +447,6 @@ export class Entity {
                 }
             }
         }
-    }
-
-    render(context: CanvasRenderingContext2D) {
-        context.save();
-        let pos = this.position;
-        context.translate(pos.x, pos.y);
-        context.scale(this.scale.x, this.scale.y);
-
-        let args = Array.prototype.slice.call(arguments) as RenderArgs;
-        if ((args as any[]).length === 1) {
-            args = [args[0], 0, 0, this.width, this.height];
-        }
-
-        for (let key in this.components) {
-            this.components[key].render.apply(this.components[key], args);
-        }
-
-        if (this.children.length > 0) {
-            for (let i = 0; i < this.children.length; i++) {
-                this.children[i].render(context);
-            }
-
-        }
-        context.restore();
-    }
-
-    globalPosition(): Point {
-        let position = this.position;
-        let parent = this.parent;
-        if (parent) {
-            return parent.globalPosition().add(this.position.clone().mult(parent.globalScale()));
-        }
-        else {
-            return position;
-        }
-    }
-
-    globalScale(): Point {
-        let scale = this.scale;
-        if (this.parent) {
-            return this.scale.mult(this.parent.globalScale());
-        }
-        else {
-            return scale;
-        }
-    }
-
-    contains(point: Point) {
-        point = point.clone().sub(this.position);
-        return point.x >= 0 && point.y >= 0 &&
-            point.x <= this.width && point.y <= this.height;
-    }
-
-    distance(other: Entity | Point) {
-        let point = (other instanceof Entity) ? other.position : other;
-        return this.position.clone().sub(point).length();
-    }
-
-    testCollision(other: Entity) {
-        let otherBottomRight = other.position.add(new Point(other.width, other.height));
-        let bottomRight = this.position.add(new Point(this.width, this.height));
-
-        return otherBottomRight.x >= this.position.x &&
-            otherBottomRight.y >= this.position.y &&
-            other.position.x <= bottomRight.x &&
-            other.position.y <= bottomRight.y;
     }
 }
 
