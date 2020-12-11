@@ -1,6 +1,5 @@
 import {
    THREE,
-   Point,
    State,
    Entity,
    Component,

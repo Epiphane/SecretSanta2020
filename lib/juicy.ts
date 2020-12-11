@@ -13,12 +13,8 @@ window.requestAnimationFrame = (function () {
 import * as TREE from './three.js';
 export * as THREE from './three.js';
 
-/* Exports in use */
-import Point from './juicy.point';
-
 /* Passthrough exports */
 export * as Sound from './juicy.sound';
-export * as Point from './juicy.point';
 
 interface KeyNameToCodeMap {
     [key: string]: number
