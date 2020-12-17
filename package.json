@@ -27,6 +27,7 @@
     "ws": "^7.4.0"
   },
   "dependencies": {
+    "@types/box2d": "0.0.35",
     "@types/three": "^0.103.2"
   }
 }

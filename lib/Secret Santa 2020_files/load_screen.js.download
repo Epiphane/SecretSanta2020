@@ -1,0 +1,46 @@
+define(["require", "exports", "../../lib/objloader", "../../lib/mtlloader", "../../lib/loaders/obj2/bridge/MtlObjBridge", "../../lib/juicy", "./game_screen"], function (require, exports, objloader_1, mtlloader_1, MtlObjBridge_1, juicy_1, game_screen_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    class LoadingScreen extends juicy_1.State {
+        constructor() {
+            super();
+            this.ambient = new juicy_1.THREE.AmbientLight(0xffffff, 0.5);
+            this.directional = new juicy_1.THREE.DirectionalLight(0xffffff, 0.5);
+            this.objects = {};
+            // Lights
+            this.scene.add(this.ambient);
+            this.scene.add(this.directional);
+            this.load("road");
+            this.load("truck1");
+            this.load("car1");
+            this.load("container1");
+            this.load("o deer");
+        }
+        load(name) {
+            this.objects[name] = null;
+            new mtlloader_1.MTLLoader().load(`models/${name}.mtl`, mtl => {
+                const objLoader = new objloader_1.OBJLoader();
+                objLoader.addMaterials(MtlObjBridge_1.MtlObjBridge.addMaterialsFromMtlLoader(mtl));
+                objLoader.load(`models/${name}.obj`, obj => {
+                    this.objects[name] = obj;
+                    this.checkLoaded();
+                });
+            });
+        }
+        init() {
+            this.checkLoaded();
+        }
+        checkLoaded() {
+            for (let name in this.objects) {
+                if (this.objects[name] === null) {
+                    return;
+                }
+            }
+            // All done! Load the game.
+            this.game.setState(new game_screen_1.default(this.objects));
+        }
+    }
+    exports.default = LoadingScreen;
+    ;
+});
+//# sourceMappingURL=load_screen.js.map

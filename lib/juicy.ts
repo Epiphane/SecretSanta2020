@@ -10,8 +10,15 @@ window.requestAnimationFrame = (function () {
         };
 })();
 
-import * as TREE from './three.js';
+import * as THREE_ from './three.js';
 export * as THREE from './three.js';
+
+// import * as Box2D_ from './box2d.js';
+// export * as Box2D from './box2d.js';
+
+import { Box2D as Box2D_ } from './Box2d.js';
+const Box2D = ((window as any).Box2D as typeof Box2D_);
+export { Box2D };
 
 /* Passthrough exports */
 export * as Sound from './juicy.sound';
@@ -26,11 +33,11 @@ class Game {
     #lastTime: number = 0;
 
     #canvas: HTMLCanvasElement | undefined;
-    #renderer: TREE.Renderer | undefined;
+    #renderer: THREE_.Renderer | undefined;
 
     width: number = 0;
     height: number = 0;
-    #scale = new TREE.Vector2(1);
+    #scale = new THREE_.Vector2(1);
 
     #KEYS: KeyNameToCodeMap = {};
     #CODES: { [key: number]: string } = {};
@@ -42,7 +49,7 @@ class Game {
     #fps: number = 0;
     #fpsAlpha: number = 0.95;
 
-    init(renderer: TREE.Renderer, width: number, height: number, keys: KeyNameToCodeMap) {
+    init(renderer: THREE_.Renderer, width: number, height: number, keys: KeyNameToCodeMap) {
         this.width = width;
         this.height = height;
 
@@ -83,7 +90,7 @@ class Game {
         this.#debug = debug;
     }
 
-    setRenderer(renderer: TREE.Renderer) {
+    setRenderer(renderer: THREE_.Renderer) {
         this.#renderer = renderer;
         this.#canvas = renderer.domElement;
 
@@ -134,7 +141,7 @@ class Game {
             this.#canvas.height = height;
             this.#canvas.width = height * this.width / this.height;
         }
-        this.#scale = new TREE.Vector2(this.#canvas.width / this.width, this.#canvas.height / this.height);
+        this.#scale = new THREE_.Vector2(this.#canvas.width / this.width, this.#canvas.height / this.height);
 
         // Make sure we re-render
         if (this.#state) {
@@ -199,7 +206,7 @@ class Game {
         let mx = evt.clientX - canvasRect.left;
         let my = evt.clientY - canvasRect.top;
 
-        return new TREE.Vector2(mx / this.#canvas.width * 2 - 1, 1 - my / this.#canvas.height * 2);
+        return new THREE_.Vector2(mx / this.#canvas.width * 2 - 1, 1 - my / this.#canvas.height * 2);
     }
 
     setState(state: State) {
@@ -273,6 +280,7 @@ class Game {
 
 let game: Game;
 
+
 /* -------------------- Game State_ ----------------------- */
 /*
  * new State_() - Construct new state
@@ -293,15 +301,17 @@ export class State {
     game: Game = game;
     entities: Entity[] = [];
 
-    protected scene = new TREE.Scene();
-    protected camera: TREE.Camera = new TREE.PerspectiveCamera(45, 1, 0.1, 1000);
+    protected scene = new THREE_.Scene();
+    protected camera: THREE_.Camera = new THREE_.PerspectiveCamera(45, 1, 0.1, 5000);
+
+    protected world = new Box2D.Dynamics.World(new Box2D.Common.Math.Vec2());
 
     init() {
         this.perspective();
-        this.lookAt(new TREE.Vector3(0, 0, -10), new TREE.Vector3(0, 0, 0));
+        this.lookAt(new THREE_.Vector3(0, 0, -10), new THREE_.Vector3(0, 0, 0));
     }
 
-    update(dt: number) {
+    update(dt: number): boolean | void {
         this.entities.forEach(e => {
             e.update(dt);
         });
@@ -309,7 +319,7 @@ export class State {
         return false;
     }
 
-    render(renderer: TREE.Renderer) {
+    render(renderer: THREE_.Renderer) {
         if (this.camera) {
             renderer.render(this.scene, this.camera!);
         }
@@ -319,14 +329,14 @@ export class State {
         fov = fov || 45;
         near = near || 0.1;
         far = far || 1000;
-        this.camera = new TREE.PerspectiveCamera(fov, this.game.width / this.game.height, near, far);
+        this.camera = new THREE_.PerspectiveCamera(fov, this.game.width / this.game.height, near, far);
     }
 
     orthographic(scale?: number, near?: number, far?: number) {
         scale = scale || 1;
         near = near || -500;
         far = far || 1000;
-        this.camera = new TREE.OrthographicCamera(
+        this.camera = new THREE_.OrthographicCamera(
             -this.game.width / scale,
             this.game.width / scale,
             this.game.height / scale,
@@ -337,7 +347,7 @@ export class State {
 
     }
 
-    lookAt(position: TREE.Vector3, lookAt: TREE.Vector3) {
+    lookAt(position: THREE_.Vector3, lookAt: THREE_.Vector3) {
         this.camera!.position.copy(position);
         this.camera!.lookAt(lookAt);;
     }
@@ -364,7 +374,7 @@ export class State {
  */
 export type RenderArgs = [CanvasRenderingContext2D, number, number, number, number];
 
-export class Entity extends TREE.Object3D {
+export class Entity extends THREE_.Object3D {
     state: State;
 
     props: { [key: string]: any };

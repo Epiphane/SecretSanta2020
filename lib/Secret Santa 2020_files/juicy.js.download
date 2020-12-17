@@ -1,0 +1,541 @@
+var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (receiver, privateMap, value) {
+    if (!privateMap.has(receiver)) {
+        throw new TypeError("attempted to set private field on non-instance");
+    }
+    privateMap.set(receiver, value);
+    return value;
+};
+var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (receiver, privateMap) {
+    if (!privateMap.has(receiver)) {
+        throw new TypeError("attempted to get private field on non-instance");
+    }
+    return privateMap.get(receiver);
+};
+define(["require", "exports", "./three.js", "./three.js", "./juicy.sound", "./Box2d.js"], function (require, exports, THREE_, THREE, Sound) {
+    "use strict";
+    var _running, _state, _lastTime, _canvas, _renderer, _scale, _KEYS, _CODES, _keyState, _listener, _debug, _fps, _fpsAlpha, _tint, _canvas_1, _canvas_2, _context;
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.Game = exports.rand = exports.BehaviorComponent = exports.TextComponent = exports.BoxComponent = exports.ImageComponent = exports.Component = exports.Entity = exports.State = exports.Sound = exports.THREE = void 0;
+    /* -------------------- Animation frames ----------------- */
+    window.requestAnimationFrame = (function () {
+        return window.requestAnimationFrame ||
+            window.webkitRequestAnimationFrame ||
+            window.mozRequestAnimationFrame ||
+            window.oRequestAnimationFrame ||
+            window.msRequestAnimationFrame ||
+            function (callback) {
+                window.setTimeout(callback, 1000 / 60);
+            };
+    })();
+    exports.THREE = THREE;
+    const Box2D = window.Box2D;
+    /* Passthrough exports */
+    exports.Sound = Sound;
+    ;
+    class Game {
+        constructor() {
+            _running.set(this, false);
+            _state.set(this, new State());
+            _lastTime.set(this, 0);
+            _canvas.set(this, void 0);
+            _renderer.set(this, void 0);
+            this.width = 0;
+            this.height = 0;
+            _scale.set(this, new THREE_.Vector2(1));
+            _KEYS.set(this, {});
+            _CODES.set(this, {});
+            _keyState.set(this, {});
+            _listener.set(this, {});
+            _debug.set(this, void 0);
+            _fps.set(this, 0);
+            _fpsAlpha.set(this, 0.95);
+        }
+        init(renderer, width, height, keys) {
+            this.width = width;
+            this.height = height;
+            this.setRenderer(renderer);
+            // Input stuff
+            __classPrivateFieldSet(this, _KEYS, keys || {});
+            __classPrivateFieldSet(this, _CODES, {});
+            for (let key in keys) {
+                __classPrivateFieldGet(this, _CODES)[keys[key]] = key;
+            }
+            // document hooks
+            document.onkeydown = (evt) => {
+                __classPrivateFieldGet(this, _keyState)[evt.keyCode] = true;
+            };
+            document.onkeyup = (evt) => {
+                __classPrivateFieldGet(this, _keyState)[evt.keyCode] = false;
+                let method = 'key_' + __classPrivateFieldGet(this, _CODES)[evt.keyCode];
+                let state = __classPrivateFieldGet(this, _state);
+                if (state && state[method]) {
+                    state[method](__classPrivateFieldGet(this, _CODES)[evt.keyCode]);
+                }
+            };
+            return this; // Enable chaining
+        }
+        clear() {
+            for (let action in __classPrivateFieldGet(this, _listener)) {
+                document.removeEventListener(action, __classPrivateFieldGet(this, _listener)[action]);
+            }
+            __classPrivateFieldSet(this, _listener, {});
+        }
+        setDebug(debug) {
+            __classPrivateFieldSet(this, _debug, debug);
+        }
+        setRenderer(renderer) {
+            __classPrivateFieldSet(this, _renderer, renderer);
+            __classPrivateFieldSet(this, _canvas, renderer.domElement);
+            let startDrag;
+            __classPrivateFieldGet(this, _canvas).onmousedown = (evt) => {
+                startDrag = evt;
+                this.trigger('dragstart', evt);
+            };
+            __classPrivateFieldGet(this, _canvas).onmouseup = (evt) => {
+                if (!startDrag) {
+                    return;
+                }
+                let startPos = this.getCanvasCoords(startDrag);
+                let endPos = this.getCanvasCoords(evt);
+                if (startPos.sub(endPos).length() <= 2) {
+                    this.trigger('click', evt);
+                }
+                else {
+                    this.trigger('dragend', evt);
+                }
+                startDrag = undefined;
+            };
+            __classPrivateFieldGet(this, _canvas).onmousemove = (evt) => {
+                if (startDrag) {
+                    this.trigger('drag', evt);
+                }
+            };
+            this.resize();
+            return this; // Enable chaining
+        }
+        resize() {
+            if (!__classPrivateFieldGet(this, _canvas)) {
+                throw Error('Game was not properly initialized - canvas is unavailable');
+            }
+            let parent = __classPrivateFieldGet(this, _canvas).parentElement;
+            let width = parent ? parent.clientWidth : __classPrivateFieldGet(this, _canvas).clientWidth;
+            let height = parent ? parent.clientHeight : __classPrivateFieldGet(this, _canvas).clientHeight;
+            __classPrivateFieldGet(this, _canvas).width = width;
+            __classPrivateFieldGet(this, _canvas).height = width * this.height / this.width;
+            if (__classPrivateFieldGet(this, _canvas).height > height) {
+                __classPrivateFieldGet(this, _canvas).height = height;
+                __classPrivateFieldGet(this, _canvas).width = height * this.width / this.height;
+            }
+            __classPrivateFieldSet(this, _scale, new THREE_.Vector2(__classPrivateFieldGet(this, _canvas).width / this.width, __classPrivateFieldGet(this, _canvas).height / this.height));
+            // Make sure we re-render
+            if (__classPrivateFieldGet(this, _state)) {
+                __classPrivateFieldGet(this, _state).hasRendered = false;
+            }
+            return this; // Enable chaining
+        }
+        keyDown(key) {
+            if (typeof (key) === 'string') {
+                return __classPrivateFieldGet(this, _keyState)[__classPrivateFieldGet(this, _KEYS)[key]];
+            }
+            else {
+                for (let k = 0; k < key.length; k++) {
+                    if (this.keyDown(key[k]))
+                        return true;
+                }
+                return false;
+            }
+        }
+        trigger(evt, pos) {
+            let state = __classPrivateFieldGet(this, _state);
+            if (state && state[evt]) {
+                state[evt](this.getCanvasCoords(pos));
+            }
+        }
+        on(action, keys, callback) {
+            if (action === 'key') {
+                if (typeof (keys) !== 'object') {
+                    keys = [keys];
+                }
+                for (let i = 0; i < keys.length; i++) {
+                    let key = keys[i];
+                    __classPrivateFieldGet(this, _state)['key_' + key] = callback;
+                }
+            }
+            else {
+                callback = keys;
+                if (__classPrivateFieldGet(this, _listener)[action]) {
+                    document.removeEventListener(action, __classPrivateFieldGet(this, _listener)[action]);
+                }
+                __classPrivateFieldGet(this, _listener)[action] = callback;
+                document.addEventListener(action, __classPrivateFieldGet(this, _listener)[action]);
+            }
+            return this; // Enable chaining
+        }
+        ;
+        getCanvasCoords(evt) {
+            if (!__classPrivateFieldGet(this, _canvas)) {
+                throw Error('Game was not properly initialized - canvas is unavailable');
+            }
+            let canvasRect = __classPrivateFieldGet(this, _canvas).getBoundingClientRect();
+            let mx = evt.clientX - canvasRect.left;
+            let my = evt.clientY - canvasRect.top;
+            return new THREE_.Vector2(mx / __classPrivateFieldGet(this, _canvas).width * 2 - 1, 1 - my / __classPrivateFieldGet(this, _canvas).height * 2);
+        }
+        setState(state) {
+            this.clear();
+            __classPrivateFieldSet(this, _state, state);
+            __classPrivateFieldGet(this, _state).game = this;
+            __classPrivateFieldGet(this, _state).init();
+            __classPrivateFieldGet(this, _state).hasRendered = false;
+            return this; // Enable chaining
+        }
+        update() {
+            if (!__classPrivateFieldGet(this, _running)) {
+                return;
+            }
+            requestAnimationFrame(() => this.update());
+            let nextTime = new Date().getTime();
+            if (__classPrivateFieldGet(this, _debug) && nextTime !== __classPrivateFieldGet(this, _lastTime)) {
+                var fps = 1000 / (nextTime - __classPrivateFieldGet(this, _lastTime));
+                __classPrivateFieldSet(this, _fps, __classPrivateFieldGet(this, _fpsAlpha) * __classPrivateFieldGet(this, _fps) + (1 - __classPrivateFieldGet(this, _fpsAlpha)) * fps);
+                __classPrivateFieldGet(this, _debug).innerHTML = 'FPS: ' + Math.floor(__classPrivateFieldGet(this, _fps));
+            }
+            let dt = (nextTime - __classPrivateFieldGet(this, _lastTime)) / 1000;
+            if (dt > 0.2) {
+                __classPrivateFieldSet(this, _lastTime, nextTime);
+                return;
+            }
+            try {
+                let updated = !__classPrivateFieldGet(this, _state).update(dt) || __classPrivateFieldGet(this, _state).updated;
+                __classPrivateFieldGet(this, _state).updated = false;
+                __classPrivateFieldSet(this, _lastTime, nextTime);
+                if (updated || !__classPrivateFieldGet(this, _state).hasRendered) {
+                    this.render();
+                    __classPrivateFieldGet(this, _state).hasRendered = true;
+                }
+            }
+            catch (e) {
+                console.error(e);
+                this.pause();
+            }
+        }
+        render() {
+            __classPrivateFieldGet(this, _state).render(__classPrivateFieldGet(this, _renderer));
+            return this; // Enable chaining
+        }
+        run() {
+            __classPrivateFieldSet(this, _running, true);
+            __classPrivateFieldSet(this, _lastTime, new Date().getTime());
+            this.update();
+            return this; // Enable chaining
+        }
+        ;
+        pause() {
+            __classPrivateFieldSet(this, _running, false);
+        }
+    }
+    _running = new WeakMap(), _state = new WeakMap(), _lastTime = new WeakMap(), _canvas = new WeakMap(), _renderer = new WeakMap(), _scale = new WeakMap(), _KEYS = new WeakMap(), _CODES = new WeakMap(), _keyState = new WeakMap(), _listener = new WeakMap(), _debug = new WeakMap(), _fps = new WeakMap(), _fpsAlpha = new WeakMap();
+    let game;
+    exports.Game = game;
+    console.log(Box2D.Common);
+    console.log(Box2D);
+    /* -------------------- Game State_ ----------------------- */
+    /*
+     * new State_() - Construct new state
+     *  [Constructor]
+     *    init   ()          - Run every time the state is swapped to.
+     *  [Useful]
+     *    click  (evt)       - When the user clicks the state
+     *    update (dt, input) - Run before rendering. Use for logic.
+     *                         IMPORTANT: return true if you don't want to re-render
+     *    render (context)   - Run after  update.    Use for graphics
+     */
+    class State {
+        constructor() {
+            /** @internal */
+            this.hasRendered = false;
+            this.updated = false;
+            this.stopClear = false;
+            this.game = game;
+            this.entities = [];
+            this.scene = new THREE_.Scene();
+            this.camera = new THREE_.PerspectiveCamera(45, 1, 0.1, 1000);
+            this.world = new Box2D_.b2World(new Box2D_.b2Vec2());
+        }
+        init() {
+            this.perspective();
+            this.lookAt(new THREE_.Vector3(0, 0, -10), new THREE_.Vector3(0, 0, 0));
+        }
+        update(dt) {
+            this.entities.forEach(e => {
+                e.update(dt);
+            });
+            return false;
+        }
+        render(renderer) {
+            if (this.camera) {
+                renderer.render(this.scene, this.camera);
+            }
+        }
+        perspective(fov, near, far) {
+            fov = fov || 45;
+            near = near || 0.1;
+            far = far || 1000;
+            this.camera = new THREE_.PerspectiveCamera(fov, this.game.width / this.game.height, near, far);
+        }
+        orthographic(scale, near, far) {
+            scale = scale || 1;
+            near = near || -500;
+            far = far || 1000;
+            this.camera = new THREE_.OrthographicCamera(-this.game.width / scale, this.game.width / scale, this.game.height / scale, -this.game.height / scale, near, far);
+        }
+        lookAt(position, lookAt) {
+            this.camera.position.copy(position);
+            this.camera.lookAt(lookAt);
+            ;
+        }
+        add(e) {
+            this.entities.push(e);
+        }
+        click(pos) {
+        }
+    }
+    exports.State = State;
+    ;
+    class Entity extends THREE_.Object3D {
+        constructor(state, components) {
+            super();
+            this.visible = true;
+            this.width = 0;
+            this.height = 0;
+            this.components = [];
+            this.updated = [];
+            this.props = {};
+            this.children = [];
+            components = (components || []).concat(this.initialComponents());
+            components.forEach(c => this.addComponent(c));
+            this.state = state;
+            state.add(this);
+            this.init();
+        }
+        init() {
+        }
+        initialComponents() {
+            return [];
+        }
+        addComponent(c) {
+            if (typeof (c) === 'function') {
+                c = new c();
+                c.entity = this;
+                c.init(this);
+            }
+            this.components.push(c);
+            this.updated.push(false);
+        }
+        getComponent(constructor) {
+            for (let i = 0; i < this.components.length; i++) {
+                if (this.components[i].__proto__.constructor.name === constructor.name) {
+                    return this.components[i];
+                }
+            }
+        }
+        addChild(child) {
+            child.parent = this;
+            this.children.push(child);
+        }
+        update(dt, constructor) {
+            if (constructor) {
+                for (let i = 0; i < this.components.length; i++) {
+                    if (this.components[i].__proto__.name === constructor.name) {
+                        if (!this.updated[i]) {
+                            this.components[i].update(dt, this.state.game);
+                            this.updated[i] = true;
+                        }
+                        break;
+                    }
+                }
+            }
+            else {
+                this.updated.fill(false);
+                for (let i = 0; i < this.components.length; i++) {
+                    if (!this.updated[i]) {
+                        this.components[i].update(dt, this.state.game);
+                        this.updated[i] = true;
+                    }
+                }
+            }
+        }
+    }
+    exports.Entity = Entity;
+    /* -------------------- Game Component -------------------- */
+    /*
+     * new Component(entity) - Construct new component on an entity
+     *  [Static Properties]
+     *    name             - Name of the component
+     *  [Useful]
+     *    update (dt)      - Update component (if applicable)
+     *    render (context) - Render component (if applicable)
+     *
+     * Component.create(name, prototype, static[, force])
+     *    - Extend and register by name. Force to override another component
+     */
+    class Component {
+        init(e) { }
+        update(dt, game) { }
+        render(context, x, y, w, h) { }
+    }
+    exports.Component = Component;
+    /* -------------------- Typical Components --------------- */
+    class ImageComponent extends Component {
+        constructor() {
+            super(...arguments);
+            _tint.set(this, void 0);
+            this.opacity = 1;
+            this.image = new Image();
+            _canvas_1.set(this, void 0);
+        }
+        init(entity) {
+            this.opacity = 1;
+            this.image.onload = () => {
+                if (!entity.width && !entity.height) {
+                    entity.width = this.image.width;
+                    entity.height = this.image.height;
+                }
+                if (__classPrivateFieldGet(this, _tint)) {
+                    this.setTint(__classPrivateFieldGet(this, _tint));
+                }
+                if (this.onload) {
+                    this.onload(this);
+                }
+                entity.state.updated = true;
+            };
+            this.image.onerror = () => {
+                this.image = new Image();
+            };
+        }
+        setTint(tint) {
+            // TODO glean alpha of tint
+            __classPrivateFieldSet(this, _tint, tint);
+            if (this.image.complete) {
+                // Apply tint
+                __classPrivateFieldSet(this, _canvas_1, __classPrivateFieldGet(this, _canvas_1) || document.createElement('canvas'));
+                __classPrivateFieldGet(this, _canvas_1).width = this.image.width;
+                __classPrivateFieldGet(this, _canvas_1).height = this.image.height;
+                let context = __classPrivateFieldGet(this, _canvas_1).getContext('2d');
+                if (!context) {
+                    throw Error('Failed getting image context');
+                }
+                context.fillStyle = __classPrivateFieldGet(this, _tint);
+                context.fillRect(0, 0, __classPrivateFieldGet(this, _canvas_1).width, __classPrivateFieldGet(this, _canvas_1).height);
+                // destination atop makes a result with an alpha channel identical to fg,
+                // but with all pixels retaining their original color *as far as I can tell*
+                context.globalCompositeOperation = "destination-atop";
+                context.globalAlpha = 0.75;
+                context.drawImage(this.image, 0, 0);
+                context.globalAlpha = 1;
+            }
+            return this; // Enable chaining
+        }
+        setImage(url) {
+            this.image.src = url;
+            return this; // Enable chaining
+        }
+        render(context, x, y, w, h) {
+            let originalAlpha = context.globalAlpha;
+            context.globalAlpha = this.opacity;
+            context.drawImage(this.image, x, y, w, h);
+            if (__classPrivateFieldGet(this, _tint) && __classPrivateFieldGet(this, _canvas_1)) {
+                context.drawImage(__classPrivateFieldGet(this, _canvas_1), x, y, w, h);
+            }
+            // Restore original global alpha
+            context.globalAlpha = originalAlpha;
+        }
+    }
+    exports.ImageComponent = ImageComponent;
+    _tint = new WeakMap(), _canvas_1 = new WeakMap();
+    class BoxComponent extends Component {
+        constructor() {
+            super(...arguments);
+            this.fillStyle = 'white';
+        }
+        setFillStyle(style) {
+            this.fillStyle = style;
+        }
+        render(context, x, y, w, h) {
+            context.fillStyle = this.fillStyle;
+            context.fillRect(x, y, w, h);
+        }
+    }
+    exports.BoxComponent = BoxComponent;
+    class TextComponent extends Component {
+        constructor() {
+            super();
+            _canvas_2.set(this, void 0);
+            _context.set(this, void 0);
+            this.textInfo = {
+                font: '32px Arial',
+                text: '',
+                fillStyle: 'white',
+            };
+            this.opacity = 1;
+            __classPrivateFieldSet(this, _canvas_2, document.createElement('canvas'));
+            __classPrivateFieldSet(this, _context, __classPrivateFieldGet(this, _canvas_2).getContext('2d'));
+        }
+        set(config) {
+            let entity = this.entity;
+            let context = __classPrivateFieldGet(this, _context);
+            let canvas = __classPrivateFieldGet(this, _canvas_2);
+            // Set attributes
+            Object.assign(this.textInfo, config);
+            // Measure the text size
+            context.font = this.textInfo.font;
+            context.fillStyle = this.textInfo.fillStyle;
+            let size = context.measureText(this.textInfo.text);
+            // Resize canvas
+            entity.width = canvas.width = Math.ceil(size.width);
+            entity.height = canvas.height = Math.ceil(parseInt(this.textInfo.font) * 5 / 3);
+            // Draw text
+            context.textBaseline = 'top';
+            context.font = this.textInfo.font;
+            context.fillStyle = this.textInfo.fillStyle;
+            context.fillText(this.textInfo.text, 0, 0);
+        }
+        render(context, x, y, w, h) {
+            // Save original alpha
+            let originalAlpha = context.globalAlpha;
+            context.globalAlpha = this.opacity;
+            arguments[0] = __classPrivateFieldGet(this, _canvas_2);
+            context.drawImage(__classPrivateFieldGet(this, _canvas_2), x, y, w, h);
+            context.globalAlpha = originalAlpha;
+        }
+    }
+    exports.TextComponent = TextComponent;
+    _canvas_2 = new WeakMap(), _context = new WeakMap();
+    ;
+    class BehaviorComponent extends Component {
+        constructor(callback) {
+            super();
+            this.callback = callback;
+        }
+        update(dt, game) {
+            this.callback(dt, game);
+        }
+    }
+    exports.BehaviorComponent = BehaviorComponent;
+    /* -------------------- Helper functions ----------------- */
+    /*
+     * Juicy.rand([min, ] max) - Return a random int between [min, max)
+     */
+    function rand(min, max) {
+        if (max) {
+            return Math.floor(Math.random() * (max - min)) + min;
+        }
+        else {
+            return Math.floor(Math.random() * min);
+        }
+    }
+    exports.rand = rand;
+    ;
+    exports.Game = game = new Game();
+});
+//# sourceMappingURL=juicy.js.map

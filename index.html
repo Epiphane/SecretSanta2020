@@ -38,16 +38,19 @@
         #game-canvas {
             background: #555;
 
-            image-rendering: -moz-crisp-edges;
+            /* image-rendering: -moz-crisp-edges;
             image-rendering: -webkit-crisp-edges;
             image-rendering: pixelated;
-            image-rendering: crisp-edges;
+            image-rendering: crisp-edges; */
         }
     </style>
 </head>
 
 <body style="padding-top: 20px">
+<span id="fps"></span>
+
     <!-- Scripts -->
+    <script src="lib/box2d.js"></script>
     <script src="dist/src/hotreload.js"></script>
     <script src="lib/require.js" data-main="dist/src/main"></script>
 </body>

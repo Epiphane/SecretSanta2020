@@ -46,7 +46,7 @@ http
       return;
     }
 
-    const path = basedir + req.url;
+    const path = (basedir + req.url).replace("%20", " ");
     fs.stat(path, (err, stat) => {
       if (!err && stat.isDirectory()) {
         const subpath = path + "index.html";

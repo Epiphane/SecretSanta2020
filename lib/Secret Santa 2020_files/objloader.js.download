@@ -1,0 +1,82 @@
+define(["require", "exports", "./loaders/OBJLoader2"], function (require, exports, OBJLoader2_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.OBJLoader = void 0;
+    class OBJLoader {
+        constructor(manager) {
+            this.loader = new OBJLoader2_1.OBJLoader2(manager);
+        }
+        setLogging(enabled, debug) {
+            this.loader.setLogging(enabled, debug);
+            return this;
+        }
+        setMaterialPerSmoothingGroup(materialPerSmoothingGroup) {
+            this.loader.setMaterialPerSmoothingGroup(materialPerSmoothingGroup);
+            return this;
+        }
+        setUseOAsMesh(useOAsMesh) {
+            this.loader.setUseOAsMesh(useOAsMesh);
+            return this;
+        }
+        setUseIndices(useIndices) {
+            this.loader.setUseIndices(useIndices);
+            return this;
+        }
+        setDisregardNormals(disregardNormals) {
+            this.loader.setDisregardNormals(disregardNormals);
+            return this;
+        }
+        setModelName(modelName) {
+            this.loader.setModelName(modelName);
+            return this;
+        }
+        setPath(path) {
+            this.loader.setPath(path);
+            return this;
+        }
+        setResourcePath(path) {
+            this.loader.setResourcePath(path);
+            return this;
+        }
+        setBaseObject3d(baseObject3d) {
+            this.loader.setBaseObject3d(baseObject3d);
+            return this;
+        }
+        addMaterials(materials, overrideExisting) {
+            this.loader.addMaterials(materials, overrideExisting);
+            return this;
+        }
+        setCallbackOnAssetAvailable(onAssetAvailable) {
+            this.loader.setCallbackOnAssetAvailable(onAssetAvailable);
+            return this;
+        }
+        setCallbackOnProgress(onProgress) {
+            this.loader.setCallbackOnProgress(onProgress);
+            return this;
+        }
+        setCallbackOnError(onError) {
+            this.loader.setCallbackOnError(onError);
+            return this;
+        }
+        setCallbackOnLoad(onLoad) {
+            this.loader.setCallbackOnLoad(onLoad);
+            return this;
+        }
+        setCallbackOnMeshAlter(onMeshAlter) {
+            this.loader.setCallbackOnMeshAlter(onMeshAlter);
+            return this;
+        }
+        setCallbackOnLoadMaterials(onLoadMaterials) {
+            this.loader.setCallbackOnLoadMaterials(onLoadMaterials);
+            return this;
+        }
+        load(url, onLoad, onProgress, onError, onMeshAlter) {
+            this.loader.load(url, onLoad, onProgress, onError, onMeshAlter);
+        }
+        parse(content) {
+            return this.loader.parse(content);
+        }
+    }
+    exports.OBJLoader = OBJLoader;
+});
+//# sourceMappingURL=objloader.js.map
