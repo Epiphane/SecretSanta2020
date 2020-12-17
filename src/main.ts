@@ -3,8 +3,8 @@ import GameScreen from './states/game_screen';
 import Keys from './helpers/keys';
 import * as THREE from '../lib/three.js';
 
-const GAME_WIDTH = 1600;
-const GAME_HEIGHT = 900;
+const GAME_WIDTH = 1280;
+const GAME_HEIGHT = 720;
 
 let renderer = new THREE.WebGLRenderer();
 renderer.setPixelRatio(window.devicePixelRatio);

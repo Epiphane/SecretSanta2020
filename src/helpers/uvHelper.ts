@@ -10,11 +10,14 @@ export enum UVSide {
     RIGHT = 10
 };
 
-export function AddUVs(geometry: THREE.Geometry, side: UVSide, texWidth: number, texHeight: number, minX: number, minY: number, maxX: number, maxY: number) {
-    minX++;
-    minY++;
-    maxX--;
-    maxY--;
+export function SetBoxUVs(geometry: THREE.Geometry, side: UVSide, texWidth: number, texHeight: number, minX: number, minY: number, width: number, height: number) {
+    const PADDING_X = 0;
+    const PADDING_Y = 0;
+
+    let maxX = minX + width - PADDING_X;
+    let maxY = minY + height - PADDING_Y;
+    minX += 0.5;
+    minY += PADDING_Y;
 
     minX /= texWidth;
     maxX /= texWidth;
