@@ -7,7 +7,7 @@ import LoadingScreen from './states/load_screen';
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
 
-let renderer = new THREE.WebGLRenderer();
+let renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(GAME_WIDTH, GAME_HEIGHT);
 document.body.appendChild(renderer.domElement);
 
