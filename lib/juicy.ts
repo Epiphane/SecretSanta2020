@@ -16,9 +16,8 @@ export * as THREE from './three.js';
 // import * as Box2D_ from './box2d.js';
 // export * as Box2D from './box2d.js';
 
-import { Box2D as Box2D_ } from './Box2d.js';
-const Box2D = ((window as any).Box2D as typeof Box2D_);
-export { Box2D };
+import * as Box2D_ from './Box2D.js';
+export * as Box2D from './Box2D.js';
 
 /* Passthrough exports */
 export * as Sound from './juicy.sound';
@@ -304,7 +303,7 @@ export class State {
     protected scene = new THREE_.Scene();
     protected camera: THREE_.Camera = new THREE_.PerspectiveCamera(45, 1, 0.1, 5000);
 
-    protected world = new Box2D.Dynamics.World(new Box2D.Common.Math.Vec2());
+    protected world = new Box2D_.Dynamics.World(new Box2D_.Common.Math.Vec2());
 
     init() {
         this.perspective();

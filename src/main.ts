@@ -8,7 +8,6 @@ const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
 
 let renderer = new THREE.WebGLRenderer();
-renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(GAME_WIDTH, GAME_HEIGHT);
 document.body.appendChild(renderer.domElement);
 
