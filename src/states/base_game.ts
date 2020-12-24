@@ -65,6 +65,7 @@ export default class BaseGame extends State {
     uiTexture = new THREE.Texture();
     uiProgress: THREE.Object3D;
     uiHealths = new THREE.Group();
+    uiObjects = new THREE.Group();
 
     constructor(objects: { [key: string]: THREE.Object3D }, params: GameInfo) {
         super();
@@ -224,16 +225,17 @@ export default class BaseGame extends State {
         );
 
         this.uiScene.add(this.uiAmbient);
+        this.uiScene.add(this.uiObjects);
 
         let progressBar = new THREE.Group();
         progressBar.position.x = 60;
         progressBar.position.y = 58;
-        this.uiScene.add(progressBar);
+        this.uiObjects.add(progressBar);
 
         this.uiHealths.scale.set(0.5, 0.5, 0.5);
         this.uiHealths.position.x = -30;
         this.uiHealths.position.y = 56;
-        this.uiScene.add(this.uiHealths);
+        this.uiObjects.add(this.uiHealths);
 
         let container = this.objects["progress_container"].clone();
         container.position.z--;
@@ -263,7 +265,7 @@ export default class BaseGame extends State {
     }
 
     setProgress(percentComplete: number) {
-        this.uiProgress.position.x = 124 * (percentComplete - 0.5);
+        this.uiProgress.position.x = 124 * (Math.min(percentComplete, 1) - 0.5);
     }
 
     getSpeedDamping() {
@@ -309,7 +311,11 @@ export default class BaseGame extends State {
         this.setProgress(this.progress / this.totalDistance);
 
         if (this.progress >= this.totalDistance) {
-            this.onWin();
+            this.uiObjects.visible = false;
+            this.obstacles.visible = false;
+            if (this.progress >= this.totalDistance + 500) {
+                this.onWin();
+            }
         }
 
         let object = this.world.getBodyList();
@@ -333,7 +339,9 @@ export default class BaseGame extends State {
 
         this.#minY -= boundsMovement;
         this.#maxY -= boundsMovement;
-        this.worldBase.position.z += boundsMovement;
+        if (this.progress < this.totalDistance) {
+            this.worldBase.position.z += boundsMovement;
+        }
         let worldPosition = this.roadObj.getWorldPosition(new THREE.Vector3());
         while (worldPosition.z > 500) {
             this.roadObj.position.z -= 550;
@@ -387,7 +395,9 @@ export default class BaseGame extends State {
             bodyA.getUserData().userData.isObstacle = false;
             this.obstacles.remove(bodyA.getUserData());
             this.world.destroyBody(bodyA);
-            this.takeDamage(bodyB.getUserData());
+            if (this.progress < this.totalDistance) {
+                this.takeDamage(bodyB.getUserData());
+            }
         }
     }
 }

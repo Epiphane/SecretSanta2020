@@ -21,7 +21,7 @@ export default class GameScreen extends BaseGame {
          speed: 150
       });
 
-      for (let i = 0; i < this.totalDistance / 30; i++) {
+      for (let i = 0; i < this.totalDistance / 30 + 20; i++) {
          let tree = this.objects["tree1"].clone();
          tree.position.z = (-i + Math.random() / 2) * 30;
          tree.position.x = (80 + Math.random() * 40);
