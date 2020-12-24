@@ -21,10 +21,20 @@ export default class LoadingScreen extends State {
         this.scene.add(this.directional);
 
         this.load("road");
-        this.load("truck1");
+        this.load("truck1_health0");
+        this.load("truck1_health1");
+        this.load("truck1_health2");
+        this.load("truck1_health3");
         this.load("car1");
-        this.load("container1");
+        this.load("container1_health0");
+        this.load("container1_health1");
+        this.load("container1_health2");
+        this.load("container1_health3");
+        this.load("container1_health4");
         this.load("o deer");
+        this.load("progress_truck");
+        this.load("progress_container");
+        this.load("tree1");
     }
 
     load(name: string) {

@@ -291,7 +291,7 @@ let game: Game;
  *                         IMPORTANT: return true if you don't want to re-render
  *    render (context)   - Run after  update.    Use for graphics
  */
-export class State {
+export class State extends Box2D_.Dynamics.ContactListener {
     /** @internal */
     hasRendered: boolean = false;
     updated: boolean = false;
@@ -303,7 +303,13 @@ export class State {
     protected scene = new THREE_.Scene();
     protected camera: THREE_.Camera = new THREE_.PerspectiveCamera(45, 1, 0.1, 5000);
 
-    protected world = new Box2D_.Dynamics.World(new Box2D_.Common.Math.Vec2());
+    protected world = new Box2D_.Dynamics.World(new Box2D_.Common.Math.Vec2(0, 0));
+
+    constructor() {
+        super();
+
+        this.world.setContactListener(this);
+    }
 
     init() {
         this.perspective();
@@ -356,6 +362,24 @@ export class State {
     }
 
     click(pos: THREE.Vector2) {
+    }
+
+    beginContact(contact: Box2D_.Dynamics.Contacts.Contact) {
+    }
+
+    endContact(contact: Box2D_.Dynamics.Contacts.Contact) {
+    }
+
+    preSolve(
+        contact: Box2D_.Dynamics.Contacts.Contact,
+        oldManifold: Box2D_.Collision.Manifold
+    ) {
+    }
+
+    postSolve(
+        contact: Box2D_.Dynamics.Contacts.Contact,
+        impulse: Box2D_.Dynamics.ContactImpulse
+    ) {
     }
 };
 
